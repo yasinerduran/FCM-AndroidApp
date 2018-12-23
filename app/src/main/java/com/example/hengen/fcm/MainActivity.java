@@ -12,15 +12,21 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
+import android.support.annotation.NonNull;
+import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.FrameLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -36,6 +42,14 @@ import java.util.UUID;
 
 
 public class MainActivity extends AppCompatActivity {
+    // Tabs Component
+    private BottomNavigationView mMainNav;
+    private FrameLayout mMainFrame;
+    private ConnectionFragment connectionFragment;
+    private HeaterFragment heaterFragment;
+    private PotFragment potFragment;
+    private FilterFragment filterFragment;
+
     // GUI Components
     private TextView mBluetoothStatus;
     private TextView mReadBuffer;
@@ -44,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
     private Button mOffBtn;
     private Button mListPairedDevicesBtn;
     private Button mDiscoverBtn;
-    private BluetoothAdapter mBTAdapter;
+    public BluetoothAdapter mBTAdapter;
     private Set<BluetoothDevice> mPairedDevices;
     private ArrayAdapter<String> mBTArrayAdapter;
     private ListView mDevicesListView;
@@ -68,14 +82,46 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        //Tabs
+        mMainFrame = (FrameLayout) findViewById(R.id.main_frame);
+        mMainNav = (BottomNavigationView) findViewById(R.id.main_nav);
+
+        connectionFragment = new ConnectionFragment();
+        heaterFragment = new HeaterFragment();
+        potFragment = new PotFragment();
+        filterFragment = new FilterFragment();
+        setFragment(connectionFragment);
+
+        mMainNav.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
+                switch (menuItem.getItemId()){
+                    case R.id.nav_connection :
+                        setFragment(connectionFragment);
+                        return true;
+                    case R.id.nav_heater:
+                        setFragment(heaterFragment);
+                        return true;
+                    case R.id.nav_pot:
+                        setFragment(potFragment);
+                        return true;
+                    case R.id.nav_filter:
+                        setFragment(filterFragment);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        });
+
         mBluetoothStatus = (TextView)findViewById(R.id.bluetoothStatus);
-        mReadBuffer = (TextView) findViewById(R.id.readBuffer);
-        mScanBtn = (Button)findViewById(R.id.scan);
-        mOffBtn = (Button)findViewById(R.id.off);
-        mDiscoverBtn = (Button)findViewById(R.id.discover);
-        mListPairedDevicesBtn = (Button)findViewById(R.id.PairedBtn);
-        mLED1 = (CheckBox)findViewById(R.id.checkboxLED1);
-        mTransmitBuffer = (TextView)findViewById(R.id.mTransmitBuffer);
+        mReadBuffer = (TextView) findViewById(R.id.readBuffer3);
+        mScanBtn = (Button)findViewById(R.id.scan3);
+        mOffBtn = (Button)findViewById(R.id.off3);
+        mDiscoverBtn = (Button)findViewById(R.id.discover3);
+        mListPairedDevicesBtn = (Button)findViewById(R.id.pairedBtn3);
+        mLED1 = (CheckBox)findViewById(R.id.checkboxLED);
+        mTransmitBuffer = (TextView)findViewById(R.id.mTransmitBuffer3);
 
         mBTArrayAdapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1);
         mBTAdapter = BluetoothAdapter.getDefaultAdapter(); // get a handle on the bluetooth radio
@@ -368,5 +414,11 @@ public class MainActivity extends AppCompatActivity {
                 mmSocket.close();
             } catch (IOException e) { }
         }
+    }
+
+    private void setFragment(Fragment fragment){
+        FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
+        fragmentTransaction.replace(R.id.main_frame, fragment);
+        fragmentTransaction.commit();
     }
 }

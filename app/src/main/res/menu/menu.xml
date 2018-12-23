@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_connection"
+        android:icon="@drawable/ic_connection"
+        android:title="Connection" />
+    <item
+        android:id="@+id/nav_heater"
+        android:icon="@drawable/ic_heater"
+        android:title="Heater" />
+    <item
+        android:id="@+id/nav_pot"
+        android:icon="@drawable/ic_pot"
+        android:title="Pot" />
+    <item
+        android:id="@+id/nav_filter"
+        android:icon="@drawable/ic_filter"
+        android:title="Filter" />
+</menu>

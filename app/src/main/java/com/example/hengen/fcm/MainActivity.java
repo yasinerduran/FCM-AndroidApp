@@ -123,10 +123,10 @@ public class MainActivity extends AppCompatActivity {
                     //First check to make sure thread created
                     if(mConnectedThread != null) {
                         if(mLED1.isChecked()){
-                            mConnectedThread.write("{led:1}");
+                            mConnectedThread.write("ON");
                         }
                         else {
-                            mConnectedThread.write("{led:0}");
+                            mConnectedThread.write("OFF");
                         }
                     }
                 }
@@ -354,6 +354,7 @@ public class MainActivity extends AppCompatActivity {
 
         /* Call this from the main activity to send data to the remote device */
         public void write(String input) {
+            input+="\n";
             byte[] bytes = input.getBytes();           //converts entered String into bytes
             try {
                 mmOutStream.write(bytes);

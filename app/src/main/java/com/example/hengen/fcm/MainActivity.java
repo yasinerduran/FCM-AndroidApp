@@ -9,19 +9,26 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
+import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.text.Layout;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
+
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -42,19 +49,11 @@ import java.util.UUID;
 
 
 public class MainActivity extends AppCompatActivity {
-    // Tabs Component
-    private BottomNavigationView mMainNav;
-    private FrameLayout mMainFrame;
-    private ConnectionFragment connectionFragment;
-    private HeaterFragment heaterFragment;
-    private PotFragment potFragment;
-    private FilterFragment filterFragment;
 
     // GUI Components
     private TextView mBluetoothStatus;
     private TextView mReadBuffer;
     private TextView mTransmitBuffer;
-    private Button mScanBtn;
     private Button mOffBtn;
     private Button mListPairedDevicesBtn;
     private Button mDiscoverBtn;
@@ -62,7 +61,20 @@ public class MainActivity extends AppCompatActivity {
     private Set<BluetoothDevice> mPairedDevices;
     private ArrayAdapter<String> mBTArrayAdapter;
     private ListView mDevicesListView;
-    private CheckBox mLED1;
+    private Button controlBtn;
+    private boolean controlBtnStatus = false;
+    private Button statusBtn;
+    private Button increaseBtn;
+    private Button decreaseBtn;
+
+    private Button set60Btn;
+    private Button set70Btn;
+    private Button set80Btn;
+    private Button set90Btn;
+    private Button set100Btn;
+    private TextView targetTemperature ;
+    private TextView currentTemperature ;
+
 
     private final String TAG = MainActivity.class.getSimpleName();
     private Handler mHandler; // Our main handler that will receive callback notifications
@@ -77,62 +89,44 @@ public class MainActivity extends AppCompatActivity {
     private final static int MESSAGE_READ = 2; // used in bluetooth handler to identify message update
     private final static int CONNECTING_STATUS = 3; // used in bluetooth handler to identify message status
 
+
+
+
+
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        //Tabs
-        mMainFrame = (FrameLayout) findViewById(R.id.main_frame);
-        mMainNav = (BottomNavigationView) findViewById(R.id.main_nav);
 
-        connectionFragment = new ConnectionFragment();
-        heaterFragment = new HeaterFragment();
-        potFragment = new PotFragment();
-        filterFragment = new FilterFragment();
-        setFragment(connectionFragment);
 
-        mMainNav.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
-            @Override
-            public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
-                switch (menuItem.getItemId()){
-                    case R.id.nav_connection :
-                        setFragment(connectionFragment);
-                        return true;
-                    case R.id.nav_heater:
-                        setFragment(heaterFragment);
-                        return true;
-                    case R.id.nav_pot:
-                        setFragment(potFragment);
-                        return true;
-                    case R.id.nav_filter:
-                        setFragment(filterFragment);
-                        return true;
-                    default:
-                        return false;
-                }
-            }
-        });
-
-        mBluetoothStatus = (TextView)findViewById(R.id.bluetoothStatus);
-        mReadBuffer = (TextView) findViewById(R.id.readBuffer3);
-        mScanBtn = (Button)findViewById(R.id.scan3);
-        mOffBtn = (Button)findViewById(R.id.off3);
-        mDiscoverBtn = (Button)findViewById(R.id.discover3);
-        mListPairedDevicesBtn = (Button)findViewById(R.id.pairedBtn3);
-        mLED1 = (CheckBox)findViewById(R.id.checkboxLED);
-        mTransmitBuffer = (TextView)findViewById(R.id.mTransmitBuffer3);
-
+        Button mScanBtn = (Button) findViewById(R.id.scan);
+        mDiscoverBtn = (Button) findViewById(R.id.discover);
+        mListPairedDevicesBtn = (Button) findViewById(R.id.paired);
+        controlBtn = (Button) findViewById(R.id.control_button);
         mBTArrayAdapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1);
         mBTAdapter = BluetoothAdapter.getDefaultAdapter(); // get a handle on the bluetooth radio
-
+        increaseBtn = (Button) findViewById(R.id.increase_temp);
+        decreaseBtn = (Button) findViewById(R.id.decrease_temp);
+        set60Btn = (Button) findViewById(R.id.set60);
+        set70Btn = (Button) findViewById(R.id.set70);
+        set80Btn = (Button) findViewById(R.id.set80);
+        set90Btn = (Button) findViewById(R.id.set90);
+        set100Btn = (Button) findViewById(R.id.set100);
+        targetTemperature = (TextView) findViewById(R.id.target_temp);
+        currentTemperature = (TextView) findViewById(R.id.current_temp);
         mDevicesListView = (ListView)findViewById(R.id.devicesListView);
         mDevicesListView.setAdapter(mBTArrayAdapter); // assign model to view
         mDevicesListView.setOnItemClickListener(mDeviceClickListener);
+        statusBtn = (Button) findViewById(R.id.resistance_status);
+
 
         // Ask for location permission if not already allowed
         if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
+
 
 
         mHandler = new Handler(){
@@ -144,56 +138,125 @@ public class MainActivity extends AppCompatActivity {
                     } catch (UnsupportedEncodingException e) {
                         e.printStackTrace();
                     }
-                    mReadBuffer.setText(readMessage);
+                    messageHandler(readMessage);
                 }
 
                 if(msg.what == CONNECTING_STATUS){
-                    if(msg.arg1 == 1)
-                        mBluetoothStatus.setText("Connected to Device: " + (String)(msg.obj));
-                    else
-                        mBluetoothStatus.setText("Connection Failed");
+                    if(msg.arg1 == 1) {
+                        Context context = getApplicationContext();
+                        CharSequence text = "Connected to Device: " + (String)(msg.obj);
+                        int duration = Toast.LENGTH_SHORT;
+
+                        Toast toast = Toast.makeText(context, text, duration);
+                        toast.show();
+                    }
+                    else{
+                        Context context = getApplicationContext();
+                        CharSequence text = "Connection Failed!";
+                        int duration = Toast.LENGTH_SHORT;
+                        Toast toast = Toast.makeText(context, text, duration);
+                        toast.show();
+                    }
                 }
             }
         };
 
+
         if (mBTArrayAdapter == null) {
             // Device does not support Bluetooth
-            mBluetoothStatus.setText("Status: Bluetooth not found");
+            //mBluetoothStatus.setText("Status: Bluetooth not found");
             Toast.makeText(getApplicationContext(),"Bluetooth device not found!",Toast.LENGTH_SHORT).show();
         }
         else {
-
-            mLED1.setOnClickListener(new View.OnClickListener(){
+            controlBtn.setOnClickListener(new View.OnClickListener(){
                 @Override
                 public void onClick(View v){
                     //First check to make sure thread created
                     if(mConnectedThread != null) {
-                        if(mLED1.isChecked()){
-                            mConnectedThread.write("ON");
+                        if(controlBtnStatus){
+                            mConnectedThread.write("SET_SYSTEM_OFF");
+                            controlBtn.setText("OFF");
+                            controlBtnStatus = false;
                         }
                         else {
-                            mConnectedThread.write("OFF");
+                            mConnectedThread.write("SET_SYSTEM_ON");
+                            controlBtn.setText("ON");
+                            controlBtnStatus = true;
                         }
                     }
                 }
             });
 
+            increaseBtn.setOnClickListener(new View.OnClickListener(){
+                @Override
+                public void onClick(View v) {
+                    int temp = Integer.parseInt(targetTemperature.getText().toString());
+                    temp +=1;
+                    targetTemperature.setText(String.valueOf(temp));
+                    messageHandler("GET-TARGET_TEMPERATURE-"+targetTemperature.getText());
+                }
+            });
+            decreaseBtn.setOnClickListener(new View.OnClickListener(){
+                @Override
+                public void onClick(View v) {
+                    int temp = Integer.parseInt(targetTemperature.getText().toString());
+                    temp -=1;
+                    targetTemperature.setText(String.valueOf(temp));
+                    messageHandler("GET-TARGET_TEMPERATURE-"+targetTemperature.getText());
+                }
+            });
 
-            mScanBtn.setOnClickListener(new View.OnClickListener() {
+
+            set60Btn.setOnClickListener(new View.OnClickListener(){
+                @Override
+                public void onClick(View v) {
+                    targetTemperature.setText("60");
+                    messageHandler("GET-TARGET_TEMPERATURE-"+targetTemperature.getText());
+                }
+            });
+            set70Btn.setOnClickListener(new View.OnClickListener(){
+                @Override
+                public void onClick(View v) {
+                    targetTemperature.setText("70");
+                    messageHandler("GET-TARGET_TEMPERATURE-"+targetTemperature.getText());
+                }
+            });
+            set80Btn.setOnClickListener(new View.OnClickListener(){
+                @Override
+                public void onClick(View v) {
+                    targetTemperature.setText("80");
+                    messageHandler("GET-TARGET_TEMPERATURE-"+targetTemperature.getText());
+                }
+            });
+            set90Btn.setOnClickListener(new View.OnClickListener(){
+                @Override
+                public void onClick(View v) {
+                    targetTemperature.setText("90");
+                    messageHandler("GET-TARGET_TEMPERATURE-"+targetTemperature.getText());
+                }
+            });
+            set100Btn.setOnClickListener(new View.OnClickListener(){
+                @Override
+                public void onClick(View v) {
+                    targetTemperature.setText("100");
+                    messageHandler("GET-TARGET_TEMPERATURE-"+targetTemperature.getText());
+                }
+            });
+            mScanBtn.setOnClickListener(new View.OnClickListener(){
                 @Override
                 public void onClick(View v) {
                     bluetoothOn(v);
                 }
             });
-
+            /*
             mOffBtn.setOnClickListener(new View.OnClickListener(){
                 @Override
                 public void onClick(View v){
                     bluetoothOff(v);
                 }
             });
-
-            mListPairedDevicesBtn.setOnClickListener(new View.OnClickListener() {
+            */
+            mListPairedDevicesBtn.setOnClickListener(new View.OnClickListener(){
                 @Override
                 public void onClick(View v){
                     listPairedDevices(v);
@@ -209,11 +272,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void bluetoothOn(View view){
+    public void bluetoothOn(View view){
         if (!mBTAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-            mBluetoothStatus.setText("Bluetooth enabled");
+            //mBluetoothStatus.setText("Bluetooth enabled");
             Toast.makeText(getApplicationContext(),"Bluetooth turned on",Toast.LENGTH_SHORT).show();
 
         }
@@ -231,20 +294,20 @@ public class MainActivity extends AppCompatActivity {
             if (resultCode == RESULT_OK) {
                 // The user picked a contact.
                 // The Intent's data Uri identifies which contact was selected.
-                mBluetoothStatus.setText("Enabled");
+                //mBluetoothStatus.setText("Enabled");
             }
-            else
-                mBluetoothStatus.setText("Disabled");
+            //else
+                //mBluetoothStatus.setText("Disabled");
         }
     }
 
-    private void bluetoothOff(View view){
+    public void bluetoothOff(View view){
         mBTAdapter.disable(); // turn off
-        mBluetoothStatus.setText("Bluetooth disabled");
+        //mBluetoothStatus.setText("Bluetooth disabled");
         Toast.makeText(getApplicationContext(),"Bluetooth turned Off", Toast.LENGTH_SHORT).show();
     }
 
-    private void discover(View view){
+    public void discover(View view){
         // Check if the device is already discovering
         if(mBTAdapter.isDiscovering()){
             mBTAdapter.cancelDiscovery();
@@ -276,7 +339,7 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    private void listPairedDevices(View view){
+    public void listPairedDevices(View view){
         mPairedDevices = mBTAdapter.getBondedDevices();
         if(mBTAdapter.isEnabled()) {
             // put it's one to the adapter
@@ -297,7 +360,7 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            mBluetoothStatus.setText("Connecting...");
+            //mBluetoothStatus.setText("Connecting...");
             // Get the device MAC address, which is the last 17 chars in the View
             String info = ((TextView) v).getText().toString();
             final String address = info.substring(info.length() - 17);
@@ -404,7 +467,6 @@ public class MainActivity extends AppCompatActivity {
             byte[] bytes = input.getBytes();           //converts entered String into bytes
             try {
                 mmOutStream.write(bytes);
-                mTransmitBuffer.setText(input);
             } catch (IOException e) { }
         }
 
@@ -416,9 +478,36 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void setFragment(Fragment fragment){
-        FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
-        fragmentTransaction.replace(R.id.main_frame, fragment);
-        fragmentTransaction.commit();
+    public void messageHandler(String message){
+        String[] seperated = message.split("-");
+        switch (seperated[0]){
+            case "SET":
+                switch (seperated[1]){
+                    case "TEMPERATURE":
+                        currentTemperature.setText(seperated[2]);
+                        break;
+                    case "RESISTANCE":
+                        if(seperated[2] == "ON")
+                            statusBtn.setBackgroundColor(Color.RED);
+                        else
+                            statusBtn.setBackgroundColor(Color.GRAY);
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            case "GET":
+                switch (seperated[1]){
+                    case "TARGET_TEMPERATURE":
+                        mConnectedThread.write("SET-TARGET_TEMPERATURE-"+targetTemperature.getText());
+                        break;
+                    default:
+                        break;
+                }
+            default:
+                break;
+        }
+
     }
+
 }

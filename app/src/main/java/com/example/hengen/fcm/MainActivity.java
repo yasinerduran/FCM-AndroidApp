@@ -54,27 +54,26 @@ public class MainActivity extends AppCompatActivity {
     private TextView mBluetoothStatus;
     private TextView mReadBuffer;
     private TextView mTransmitBuffer;
+    private TextView targetTemperature ;
+    private TextView currentTemperature ;
     private Button mOffBtn;
     private Button mListPairedDevicesBtn;
     private Button mDiscoverBtn;
-    public BluetoothAdapter mBTAdapter;
-    private Set<BluetoothDevice> mPairedDevices;
-    private ArrayAdapter<String> mBTArrayAdapter;
-    private ListView mDevicesListView;
-    private Button controlBtn;
-    private boolean controlBtnStatus = false;
-    private Button statusBtn;
-    private Button increaseBtn;
-    private Button decreaseBtn;
-
     private Button set60Btn;
     private Button set70Btn;
     private Button set80Btn;
     private Button set90Btn;
     private Button set100Btn;
-    private TextView targetTemperature ;
-    private TextView currentTemperature ;
+    private Button statusBtn;
+    private Button increaseBtn;
+    private Button decreaseBtn;
+    private Button controlBtn;
+    public BluetoothAdapter mBTAdapter;
+    private Set<BluetoothDevice> mPairedDevices;
+    private ArrayAdapter<String> mBTArrayAdapter;
+    private ListView mDevicesListView;
 
+    private boolean controlBtnStatus = false;
 
     private final String TAG = MainActivity.class.getSimpleName();
     private Handler mHandler; // Our main handler that will receive callback notifications
@@ -83,31 +82,22 @@ public class MainActivity extends AppCompatActivity {
 
     private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"); // "random" unique identifier
 
-
     // #defines for identifying shared types between calling functions
     private final static int REQUEST_ENABLE_BT = 1; // used to identify adding bluetooth names
     private final static int MESSAGE_READ = 2; // used in bluetooth handler to identify message update
     private final static int CONNECTING_STATUS = 3; // used in bluetooth handler to identify message status
-
-
-
-
-
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
-
+        // Connect UI
         Button mScanBtn = (Button) findViewById(R.id.scan);
         mDiscoverBtn = (Button) findViewById(R.id.discover);
         mListPairedDevicesBtn = (Button) findViewById(R.id.paired);
         controlBtn = (Button) findViewById(R.id.control_button);
-        mBTArrayAdapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1);
-        mBTAdapter = BluetoothAdapter.getDefaultAdapter(); // get a handle on the bluetooth radio
+        statusBtn = (Button) findViewById(R.id.resistance_status);
         increaseBtn = (Button) findViewById(R.id.increase_temp);
         decreaseBtn = (Button) findViewById(R.id.decrease_temp);
         set60Btn = (Button) findViewById(R.id.set60);
@@ -115,33 +105,33 @@ public class MainActivity extends AppCompatActivity {
         set80Btn = (Button) findViewById(R.id.set80);
         set90Btn = (Button) findViewById(R.id.set90);
         set100Btn = (Button) findViewById(R.id.set100);
+
         targetTemperature = (TextView) findViewById(R.id.target_temp);
         currentTemperature = (TextView) findViewById(R.id.current_temp);
         mDevicesListView = (ListView)findViewById(R.id.devicesListView);
+
+        mBTAdapter = BluetoothAdapter.getDefaultAdapter(); // get a handle on the bluetooth radio
         mDevicesListView.setAdapter(mBTArrayAdapter); // assign model to view
         mDevicesListView.setOnItemClickListener(mDeviceClickListener);
-        statusBtn = (Button) findViewById(R.id.resistance_status);
-
+        mBTArrayAdapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1);
 
         // Ask for location permission if not already allowed
         if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
 
-
-
+        // Message Handler Input Stream is Here.
         mHandler = new Handler(){
             public void handleMessage(android.os.Message msg){
                 if(msg.what == MESSAGE_READ){
                     String readMessage = null;
                     try {
                         readMessage = new String((byte[]) msg.obj, "UTF-8");
-                        messageHandler(readMessage);
+                        messageHandler(readMessage);//Handles message.
                     } catch (UnsupportedEncodingException e) {
                         e.printStackTrace();
                     }
 
                 }
-
                 if(msg.what == CONNECTING_STATUS){
                     if(msg.arg1 == 1) {
                         Context context = getApplicationContext();
@@ -169,6 +159,7 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(getApplicationContext(),"Bluetooth device not found!",Toast.LENGTH_SHORT).show();
         }
         else {
+            // System On Off button
             controlBtn.setOnClickListener(new View.OnClickListener(){
                 @Override
                 public void onClick(View v){
@@ -190,6 +181,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+            // Increase Temperature Listener.
             increaseBtn.setOnClickListener(new View.OnClickListener(){
                 @Override
                 public void onClick(View v) {
@@ -199,6 +191,8 @@ public class MainActivity extends AppCompatActivity {
                     messageHandler("SET-TARGET_TEMPERATURE-"+targetTemperature.getText());
                 }
             });
+
+            // Decrease Temperature Listener.
             decreaseBtn.setOnClickListener(new View.OnClickListener(){
                 @Override
                 public void onClick(View v) {
@@ -209,7 +203,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
-
+            // Buttons set direcly chance temperature.
             set60Btn.setOnClickListener(new View.OnClickListener(){
                 @Override
                 public void onClick(View v) {
@@ -245,12 +239,15 @@ public class MainActivity extends AppCompatActivity {
                     messageHandler("SET-TARGET_TEMPERATURE-"+targetTemperature.getText());
                 }
             });
+
+
             mScanBtn.setOnClickListener(new View.OnClickListener(){
                 @Override
                 public void onClick(View v) {
                     bluetoothOn(v);
                 }
             });
+
             /*
             mOffBtn.setOnClickListener(new View.OnClickListener(){
                 @Override
@@ -259,6 +256,9 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
             */
+
+
+            // List paired devices
             mListPairedDevicesBtn.setOnClickListener(new View.OnClickListener(){
                 @Override
                 public void onClick(View v){
@@ -266,6 +266,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+            // Discovering
             mDiscoverBtn.setOnClickListener(new View.OnClickListener(){
                 @Override
                 public void onClick(View v){
@@ -481,12 +482,13 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // When input stream completed, emerging data separates for significance level.
     public void messageHandler(String message){
         String[] seperated = message.split("-");
         switch (seperated[0]){
             case "SET":
                 switch (seperated[1]){
-                        // Phone -> Machine
+                        // Phone -> Machine Feature
                     case "TARGET_TEMPERATURE":
                         mConnectedThread.write("SET-TARGET_TEMPERATURE-"+targetTemperature.getText());
                         break;
@@ -496,16 +498,20 @@ public class MainActivity extends AppCompatActivity {
                         mConnectedThread.write(message);
                         break;
 
-                        //  Machine -> Phone
+                        // Machine -> Phone Feature
                     case "ACTIVITY_RESISTANCE":
                         if(seperated[2] == "ON")
                             statusBtn.setBackgroundColor(Color.RED);
                         else
                             statusBtn.setBackgroundColor(Color.GRAY);
                         break;
+
+                        // Machine -> Phone Feature
                     case "CURRENT_TEMPERATURE":
                         currentTemperature.setText(seperated[2]);
                         break;
+
+                        // Machine -> Phone Feature
                     case "TOAST":
                         Toast.makeText(getApplicationContext(),seperated[2],Toast.LENGTH_SHORT).show();
                         break;

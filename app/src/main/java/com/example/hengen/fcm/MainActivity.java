@@ -135,10 +135,11 @@ public class MainActivity extends AppCompatActivity {
                     String readMessage = null;
                     try {
                         readMessage = new String((byte[]) msg.obj, "UTF-8");
+                        messageHandler(readMessage);
                     } catch (UnsupportedEncodingException e) {
                         e.printStackTrace();
                     }
-                    messageHandler(readMessage);
+
                 }
 
                 if(msg.what == CONNECTING_STATUS){
@@ -174,12 +175,14 @@ public class MainActivity extends AppCompatActivity {
                     //First check to make sure thread created
                     if(mConnectedThread != null) {
                         if(controlBtnStatus){
-                            mConnectedThread.write("SET_SYSTEM_OFF");
+                            messageHandler("SET-SYSTEM-OFF");
+                            //mConnectedThread.write("OFF");
                             controlBtn.setText("OFF");
                             controlBtnStatus = false;
                         }
                         else {
-                            mConnectedThread.write("SET_SYSTEM_ON");
+                            messageHandler("SET-SYSTEM-ON");
+                            //mConnectedThread.write("ON");
                             controlBtn.setText("ON");
                             controlBtnStatus = true;
                         }
@@ -193,7 +196,7 @@ public class MainActivity extends AppCompatActivity {
                     int temp = Integer.parseInt(targetTemperature.getText().toString());
                     temp +=1;
                     targetTemperature.setText(String.valueOf(temp));
-                    messageHandler("GET-TARGET_TEMPERATURE-"+targetTemperature.getText());
+                    messageHandler("SET-TARGET_TEMPERATURE-"+targetTemperature.getText());
                 }
             });
             decreaseBtn.setOnClickListener(new View.OnClickListener(){
@@ -202,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
                     int temp = Integer.parseInt(targetTemperature.getText().toString());
                     temp -=1;
                     targetTemperature.setText(String.valueOf(temp));
-                    messageHandler("GET-TARGET_TEMPERATURE-"+targetTemperature.getText());
+                    messageHandler("SET-TARGET_TEMPERATURE-"+targetTemperature.getText());
                 }
             });
 
@@ -211,35 +214,35 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onClick(View v) {
                     targetTemperature.setText("60");
-                    messageHandler("GET-TARGET_TEMPERATURE-"+targetTemperature.getText());
+                    messageHandler("SET-TARGET_TEMPERATURE-"+targetTemperature.getText());
                 }
             });
             set70Btn.setOnClickListener(new View.OnClickListener(){
                 @Override
                 public void onClick(View v) {
                     targetTemperature.setText("70");
-                    messageHandler("GET-TARGET_TEMPERATURE-"+targetTemperature.getText());
+                    messageHandler("SET-TARGET_TEMPERATURE-"+targetTemperature.getText());
                 }
             });
             set80Btn.setOnClickListener(new View.OnClickListener(){
                 @Override
                 public void onClick(View v) {
                     targetTemperature.setText("80");
-                    messageHandler("GET-TARGET_TEMPERATURE-"+targetTemperature.getText());
+                    messageHandler("SET-TARGET_TEMPERATURE-"+targetTemperature.getText());
                 }
             });
             set90Btn.setOnClickListener(new View.OnClickListener(){
                 @Override
                 public void onClick(View v) {
                     targetTemperature.setText("90");
-                    messageHandler("GET-TARGET_TEMPERATURE-"+targetTemperature.getText());
+                    messageHandler("SET-TARGET_TEMPERATURE-"+targetTemperature.getText());
                 }
             });
             set100Btn.setOnClickListener(new View.OnClickListener(){
                 @Override
                 public void onClick(View v) {
                     targetTemperature.setText("100");
-                    messageHandler("GET-TARGET_TEMPERATURE-"+targetTemperature.getText());
+                    messageHandler("SET-TARGET_TEMPERATURE-"+targetTemperature.getText());
                 }
             });
             mScanBtn.setOnClickListener(new View.OnClickListener(){
@@ -483,23 +486,44 @@ public class MainActivity extends AppCompatActivity {
         switch (seperated[0]){
             case "SET":
                 switch (seperated[1]){
-                    case "TEMPERATURE":
-                        currentTemperature.setText(seperated[2]);
+                        // Phone -> Machine
+                    case "TARGET_TEMPERATURE":
+                        mConnectedThread.write("SET-TARGET_TEMPERATURE-"+targetTemperature.getText());
                         break;
-                    case "RESISTANCE":
+
+                        // Phone -> Machine
+                    case "SYSTEM":
+                        mConnectedThread.write(message);
+                        break;
+
+                        //  Machine -> Phone
+                    case "ACTIVITY_RESISTANCE":
                         if(seperated[2] == "ON")
                             statusBtn.setBackgroundColor(Color.RED);
                         else
                             statusBtn.setBackgroundColor(Color.GRAY);
                         break;
+                    case "CURRENT_TEMPERATURE":
+                        currentTemperature.setText(seperated[2]);
+                        break;
+                    case "TOAST":
+                        Toast.makeText(getApplicationContext(),seperated[2],Toast.LENGTH_SHORT).show();
+                        break;
+
                     default:
                         break;
                 }
                 break;
             case "GET":
                 switch (seperated[1]){
+                        //  Machine -> Phone
                     case "TARGET_TEMPERATURE":
                         mConnectedThread.write("SET-TARGET_TEMPERATURE-"+targetTemperature.getText());
+                        break;
+
+                        //  Machine -> Phone
+                    case "TEST":
+                        mConnectedThread.write("SET-TEST-OK");
                         break;
                     default:
                         break;
